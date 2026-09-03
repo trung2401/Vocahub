@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.local.example
+
+# Logs and runtime output
+*.log
+logs/
+*.pid
+*.pid.lock
+
+# Test and tool caches
+.cache/
+.turbo/
+.eslintcache
+.npm/
+
+# Editor and operating-system files
+.idea/
+.vscode/*
+!.vscode/mcp.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
