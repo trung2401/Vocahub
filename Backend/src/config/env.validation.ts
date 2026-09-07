@@ -1,13 +1,13 @@
 import { plainToInstance } from 'class-transformer';
-import { IsBooleanString, IsInt, IsNotEmpty, IsOptional, IsString, Min, MinLength, validateSync } from 'class-validator';
+import { IsBooleanString, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Min, MinLength, validateSync } from 'class-validator';
 
 class EnvironmentVariables {
   @IsInt()
   @Min(1)
-  PORT = 4000;
+  PORT = 4001;
 
   @IsString()
-  FRONTEND_ORIGIN = 'http://localhost:3000';
+  FRONTEND_ORIGIN = 'http://localhost:3001';
 
   @IsString()
   DB_HOST = '127.0.0.1';
@@ -35,17 +35,17 @@ class EnvironmentVariables {
   @IsString() @IsNotEmpty() @MinLength(32)
   JWT_REFRESH_SECRET!: string;
 
-  @IsOptional() @IsString()
+  @IsOptional() @IsString() @Matches(/^[1-9]\d*(ms|s|m|h|d|w)$/)
   JWT_ACCESS_TTL = '15m';
 
-  @IsOptional() @IsString()
+  @IsOptional() @IsString() @Matches(/^[1-9]\d*(ms|s|m|h|d|w)$/)
   JWT_REFRESH_TTL = '7d';
 }
 
 export function validateEnvironment(config: Record<string, unknown>) {
   const normalized = {
     ...config,
-    PORT: config.PORT === undefined ? 4000 : Number(config.PORT),
+    PORT: config.PORT === undefined ? 4001 : Number(config.PORT),
     DB_PORT: config.DB_PORT === undefined ? 3306 : Number(config.DB_PORT)
   };
   const values = plainToInstance(EnvironmentVariables, normalized, { enableImplicitConversion: true });

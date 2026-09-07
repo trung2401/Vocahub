@@ -8,7 +8,7 @@ import { ReviewLogEntity } from './entities/review-log.entity';
 export class ReviewLogsService {
   constructor(@InjectRepository(ReviewLogEntity) private readonly logs: Repository<ReviewLogEntity>) {}
 
-  async create(input: Pick<ReviewLogEntity, 'vocabularyEntryId' | 'deckId' | 'userId' | 'rating' | 'mode'>): Promise<void> {
-    await this.logs.save(this.logs.create({ id: createId(), ...input }));
+  async create(input: Pick<ReviewLogEntity, 'vocabularyEntryId' | 'deckId' | 'userId' | 'rating' | 'mode'>, repository = this.logs): Promise<void> {
+    await repository.save(repository.create({ id: createId(), ...input }));
   }
 }

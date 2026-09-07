@@ -1,28 +1,33 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { toVocabularyResponse, type VocabularyResponseDto } from '../lib/domain-response';
 import { DecksService } from '../decks/decks.service';
 import { VocabularyEntryEntity } from '../vocabulary/entities/vocabulary-entry.entity';
 import { RecordReviewDto } from './dto/record-review.dto';
 import { scheduleReview } from './scheduling';
 import { ReviewLogsService } from '../review-logs/review-logs.service';
+import { ReviewLogEntity } from '../review-logs/entities/review-log.entity';
 
 @Injectable()
 export class StudyService {
-  constructor(@InjectRepository(VocabularyEntryEntity) private readonly entries: Repository<VocabularyEntryEntity>, private readonly decks: DecksService, private readonly reviewLogs: ReviewLogsService) {}
+  constructor(@InjectRepository(VocabularyEntryEntity) private readonly entries: Repository<VocabularyEntryEntity>, private readonly decks: DecksService, private readonly reviewLogs: ReviewLogsService, private readonly dataSource: DataSource) {}
 
   async recordReview(id: string, dto: RecordReviewDto, userId: string): Promise<VocabularyResponseDto> {
-    const entry = await this.entries.findOne({ where: { id }, relations: ['deck'] });
-    if (!entry || entry.deck?.userId !== userId) throw new NotFoundException({ code: 'not_found', message: 'Từ vựng không tồn tại.' });
-    const result = scheduleReview(entry, dto.rating);
-    entry.status = result.status;
-    entry.nextReviewAt = result.nextReviewAt;
-    entry.lastReviewedAt = new Date();
-    entry.correctCount = result.correctCount;
-    entry.incorrectCount = result.incorrectCount;
-    const saved = await this.entries.save(entry);
-    await this.reviewLogs.create({ vocabularyEntryId: saved.id, deckId: saved.deckId, userId, rating: dto.rating, mode: dto.mode ?? 'flashcard' });
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const entries = manager.getRepository(VocabularyEntryEntity);
+      const entry = await entries.findOne({ where: { id }, relations: ['deck'] });
+      if (!entry || entry.deck?.userId !== userId) throw new NotFoundException({ code: 'not_found', message: 'Từ vựng không tồn tại.' });
+      const result = scheduleReview(entry, dto.rating);
+      entry.status = result.status;
+      entry.nextReviewAt = result.nextReviewAt;
+      entry.lastReviewedAt = new Date();
+      entry.correctCount = result.correctCount;
+      entry.incorrectCount = result.incorrectCount;
+      const updated = await entries.save(entry);
+      await this.reviewLogs.create({ vocabularyEntryId: updated.id, deckId: updated.deckId, userId, rating: dto.rating, mode: dto.mode ?? 'flashcard' }, manager.getRepository(ReviewLogEntity));
+      return updated;
+    });
     return toVocabularyResponse(saved);
   }
 

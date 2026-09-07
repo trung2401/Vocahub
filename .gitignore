@@ -27,6 +27,7 @@ logs/
 .turbo/
 .eslintcache
 .npm/
+test-results/
 
 # Editor and operating-system files
 .idea/
@@ -36,4 +37,3 @@ logs/
 *.swo
 .DS_Store
 Thumbs.db
-

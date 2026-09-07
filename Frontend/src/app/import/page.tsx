@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowLeft, ArrowRight, Check, FileUp } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/AppShell';
 import { ColumnMapper } from '@/components/ColumnMapper';
@@ -10,7 +10,7 @@ import { ImportPreviewTable } from '@/components/ImportPreviewTable';
 import { InlineError } from '@/components/InlineError';
 import { useApp } from '@/lib/app-context';
 import { copy } from '@/data/mockData';
-import type { ImportRow } from '@/domain/types';
+import { autoMapColumns, buildImportRows } from '@/data/local/mock/mockParser';
 
 export interface ImportPageProps {}
 
@@ -24,7 +24,9 @@ export default function ImportPage(_props: Readonly<ImportPageProps>) {
   const [fileName, setFileName] = useState('');
   const [headers, setHeaders] = useState<string[]>(['term', 'meaning', 'pronunciation']);
   const [mapping, setMapping] = useState<Record<string, string>>(defaultMapping);
-  const [rows, setRows] = useState<ImportRow[]>([]);
+  const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
+  const [includedByRow, setIncludedByRow] = useState<Record<number, boolean>>({});
+  const [excludedRows, setExcludedRows] = useState<Set<number>>(new Set());
   const [deckName, setDeckName] = useState('TOEIC Vocabulary');
   const [error, setError] = useState('');
 
@@ -32,19 +34,17 @@ export default function ImportPage(_props: Readonly<ImportPageProps>) {
     setDropState('parsing'); setError(''); setFileName(file.name);
     try {
       const table = await parser.parse(file);
-      const findColumn = (names: string[]) => table.headers.find((header) => names.includes(header.trim().toLowerCase())) ?? '';
-      const nextMapping = { term: findColumn(['term', 'word', 'từ', 'từ vựng']), meaning: findColumn(['meaning', 'definition', 'nghĩa']), pronunciation: findColumn(['pronunciation', 'phonetic', 'phiên âm']), example: findColumn(['example', 'ví dụ']), partOfSpeech: findColumn(['partofspeech', 'part of speech', 'loại từ']) };
-      const nextRows: ImportRow[] = table.rows.map((values, index) => {
-        const term = nextMapping.term ? values[nextMapping.term]?.trim() : '';
-        const meaning = nextMapping.meaning ? values[nextMapping.meaning]?.trim() : '';
-        return { rowNumber: index + 2, values: { term, meaning, pronunciation: nextMapping.pronunciation ? values[nextMapping.pronunciation]?.trim() ?? '' : '', example: nextMapping.example ? values[nextMapping.example]?.trim() ?? '' : '', partOfSpeech: nextMapping.partOfSpeech ? values[nextMapping.partOfSpeech]?.trim() ?? '' : '' }, issues: [ ...(term ? [] : [{ field: 'term', code: 'required' as const, message: 'Thiếu từ vựng' }]), ...(meaning ? [] : [{ field: 'meaning', code: 'required' as const, message: 'Thiếu nghĩa' }]) ], included: true };
-      });
-      setHeaders(table.headers); setRows(nextRows); setMapping(nextMapping); setDropState('success'); setStep(2);
-    } catch (caught) { setDropState('error'); setError(caught instanceof Error && caught.message === 'too_large' ? 'File vượt quá 10 MB.' : 'Định dạng file chưa được hỗ trợ.'); }
+      setHeaders(table.headers); setRawRows(table.rows); setIncludedByRow({}); setExcludedRows(new Set()); setMapping(autoMapColumns(table.headers)); setDropState('success'); setStep(2);
+    } catch (caught) {
+      setDropState('error');
+      const code = caught instanceof Error ? caught.message : '';
+      setError(code === 'too_large' ? 'File vượt quá 10 MB.' : code === 'too_many_rows' ? 'File vượt quá 5.000 dòng.' : code === 'empty_file' ? 'File không có dữ liệu.' : code === 'invalid_file' ? 'File không hợp lệ hoặc thiếu tiêu đề cột.' : 'Định dạng file chưa được hỗ trợ.');
+    }
   };
 
-  const toggleRow = (rowNumber: number) => setRows((current) => current.map((row) => row.rowNumber === rowNumber ? { ...row, included: !row.included } : row));
-  const removeRow = (rowNumber: number) => setRows((current) => current.filter((row) => row.rowNumber !== rowNumber));
+  const rows = useMemo(() => buildImportRows(rawRows, mapping, includedByRow, excludedRows), [excludedRows, includedByRow, mapping, rawRows]);
+  const toggleRow = (rowNumber: number) => setIncludedByRow((current) => ({ ...current, [rowNumber]: !(current[rowNumber] ?? true) }));
+  const removeRow = (rowNumber: number) => setExcludedRows((current) => new Set([...current, rowNumber]));
   const canCreate = Boolean(deckName.trim()) && rows.some((row) => row.included && row.issues.length === 0);
 
   const finish = async () => { if (!canCreate) return; const deck = await saveImportedRows(deckName.trim(), rows, fileName); router.push(`/decks/${deck.id}`); };

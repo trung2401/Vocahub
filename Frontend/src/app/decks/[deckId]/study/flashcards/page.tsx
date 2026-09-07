@@ -7,6 +7,7 @@ import { StudyCard } from '@/components/StudyCard';
 import { SummaryPanel } from '@/components/SummaryPanel';
 import { useApp } from '@/lib/app-context';
 import { copy } from '@/data/mockData';
+import { selectFlashcardEntries } from '@/data/local/study';
 import type { VocabularyEntry } from '@/domain/types';
 
 export interface FlashcardPageProps { params: { deckId: string }; }
@@ -14,7 +15,8 @@ export interface FlashcardPageProps { params: { deckId: string }; }
 export default function FlashcardPage({ params }: Readonly<FlashcardPageProps>) {
   const { decks, entriesByDeck, recordReview } = useApp();
   const deck = decks.find((item) => item.id === params.deckId);
-  const entries = useMemo(() => (entriesByDeck[params.deckId] ?? []).slice(0, 8), [entriesByDeck, params.deckId]);
+  const allEntries = useMemo(() => entriesByDeck[params.deckId] ?? [], [entriesByDeck, params.deckId]);
+  const entries = useMemo(() => selectFlashcardEntries(allEntries), [allEntries]);
   const [index, setIndex] = useState(0); const [flipped, setFlipped] = useState(false); const [score, setScore] = useState(0); const [done, setDone] = useState(false);
   const current = entries[index];
   useEffect(() => { const onKey = (event: KeyboardEvent) => { if (event.key === ' ') { event.preventDefault(); setFlipped((value) => !value); } if (event.key === 'Escape') window.location.href = `/decks/${params.deckId}`; }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, [params.deckId]);

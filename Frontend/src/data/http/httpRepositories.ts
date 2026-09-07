@@ -42,7 +42,7 @@ export const createHttpRepositories = () => {
 };
 
 export async function importDeck(name: string, fileName: string, entries: CreateVocabularyInput[]) {
-  return apiRequest<{ deck: Deck; entries: VocabularyEntry[]; counts: { total: number; created: number } }>('/imports/decks', {
+  return apiRequest<{ deck: Deck; entries: VocabularyEntry[]; counts: { total: number; created: number; validRows: number; invalidRows: number } }>('/imports/decks', {
     method: 'POST',
     body: JSON.stringify({ name, fileName, entries: entries.map(entryBody) })
   });

@@ -1,4 +1,4 @@
-import type { Deck, ImportRow, VocabularyEntry } from '@/domain/types';
+import type { Deck, VocabularyEntry } from '@/domain/types';
 
 export const copy = {
   brand: 'VocaHub',
@@ -6,7 +6,6 @@ export const copy = {
     overview: 'Tổng quan',
     vocabulary: 'Bộ từ vựng',
     practice: 'Luyện tập',
-    statistics: 'Thống kê',
     settings: 'Cài đặt',
     help: 'Trợ giúp',
     collapse: 'Thu gọn'
@@ -22,6 +21,9 @@ export const copy = {
     import: 'Import danh sách',
     createDeck: 'Tạo deck trống',
     createDeckShort: 'Tạo bộ từ mới',
+    createDeckTitle: 'Tạo bộ từ vựng mới',
+    createDeckName: 'Tên bộ từ vựng',
+    createDeckPlaceholder: 'VD: IELTS Vocabulary',
     viewDeck: 'Xem deck',
     studyNow: 'Học ngay',
     emptyTitle: 'Bắt đầu với bộ từ đầu tiên',
@@ -54,7 +56,8 @@ export const copy = {
     mappingHintShort: 'Để import thành công, hãy đảm bảo file có các cột "Từ vựng" (bắt buộc) và "Nghĩa" (bắt buộc).',
     chooseColumn: 'Chọn cột...',
     removeRow: 'Xóa dòng',
-    editRow: 'Sửa dòng',
+    selectRow: 'Chọn dòng',
+    deselectRow: 'Bỏ chọn dòng',
     row: 'Dòng'
   },
   deck: {
@@ -158,17 +161,3 @@ export const createSampleEntries = (): VocabularyEntry[] =>
       incorrectCount: index % 2
     };
   });
-
-export const importPreviewRows: ImportRow[] = [
-  { rowNumber: 1, values: { term: 'ubiquitous', meaning: 'có mặt ở khắp nơi', pronunciation: '/juːˈbɪkwɪtəs/' }, issues: [], included: true },
-  { rowNumber: 2, values: { term: 'ephemeral', meaning: 'phù du, chóng tàn', pronunciation: '/ɪˈfemərəl/' }, issues: [], included: true },
-  { rowNumber: 3, values: { term: 'sycophant', meaning: '', pronunciation: '/ˈsɪkəfænt/' }, issues: [{ field: 'meaning', code: 'required', message: 'Thiếu nghĩa' }], included: true },
-  { rowNumber: 4, values: { term: 'cacophony', meaning: 'âm thanh chói tai', pronunciation: '/kəˈkɒfəni/' }, issues: [], included: true },
-  { rowNumber: 5, values: { term: 'diligence', meaning: 'sự siêng năng', pronunciation: '/ˈdɪlɪdʒəns/' }, issues: [], included: true }
-];
-
-export const quizTerms = [
-  { term: 'negotiate', correct: 'đàm phán', options: ['thương lượng (Wrong chosen)', 'đàm phán', 'từ chối', 'chấp nhận'] },
-  { term: 'allocate', correct: 'phân bổ', options: ['phân bổ', 'hủy bỏ', 'tập hợp', 'thay thế'] },
-  { term: 'reliable', correct: 'đáng tin cậy', options: ['đáng tin cậy', 'tạm thời', 'khẩn cấp', 'phức tạp'] }
-] as const;

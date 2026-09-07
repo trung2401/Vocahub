@@ -17,7 +17,7 @@
 | UI | CSS variables + CSS Modules hoặc utility CSS theo output Stitch; `lucide-react` | Giữ token tập trung, icon nhất quán, dễ thay theme |
 | State | React state cho state cục bộ; một store nhỏ cho session/import khi cần | Tránh global state quá sớm |
 | Persistence | IndexedDB qua Dexie | Bền vững hơn localStorage, hỗ trợ query theo deck và due date |
-| Parse | Papa Parse cho CSV; SheetJS (`xlsx`) cho Excel | Hỗ trợ file phổ biến và parse ở client |
+| Parse | SheetJS (`xlsx`) cho CSV và Excel | Chuẩn hóa CSV/XLS/XLSX về cùng bảng dữ liệu và parse ở client |
 | Validation | Zod | Một schema dùng cho form, preview và boundary adapter |
 | Test | Vitest + Testing Library; Playwright cho E2E | Phù hợp Next.js và kiểm chứng luồng người dùng |
 
@@ -152,7 +152,7 @@ Quiz generator lấy đáp án đúng và ba nghĩa khác nhau trong cùng deck.
 ```text
 File input
   → detect extension/size
-  → parser (CSV/XLSX)
+  → parser (CSV/XLS/XLSX)
   → normalized table (headers + rows)
   → column mapper
   → row validator + duplicate detector

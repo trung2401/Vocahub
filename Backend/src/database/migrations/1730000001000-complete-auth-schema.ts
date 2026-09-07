@@ -3,6 +3,9 @@ import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 /**
  * Compatibility migration for databases that already ran the original
  * two-table schema before authentication and activity tracking were added.
+ *
+ * Existing decks must be assigned to an already-created account explicitly.
+ * Set LEGACY_USER_ID before running the migration when orphan decks exist.
  */
 export class CompleteAuthSchema1730000001000 implements MigrationInterface {
   name = 'CompleteAuthSchema1730000001000';
@@ -20,11 +23,26 @@ export class CompleteAuthSchema1730000001000 implements MigrationInterface {
     }
 
     if (await queryRunner.hasTable('decks')) {
-      const decks = await queryRunner.getTable('decks');
+      let decks = await queryRunner.getTable('decks');
       if (!decks?.findColumnByName('user_id')) {
         await queryRunner.addColumn('decks', new TableColumn({ name: 'user_id', type: 'char', length: '36', isNullable: true }));
         await queryRunner.query('CREATE INDEX idx_decks_user_updated ON decks (user_id, updated_at)');
         await queryRunner.query('ALTER TABLE decks ADD CONSTRAINT fk_decks_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE');
+        decks = await queryRunner.getTable('decks');
+      }
+
+      const orphanCountResult = await queryRunner.query('SELECT COUNT(*) AS count FROM decks WHERE user_id IS NULL');
+      const orphanCount = Number(orphanCountResult[0]?.count ?? 0);
+      if (orphanCount > 0) {
+        const legacyUserId = process.env.LEGACY_USER_ID?.trim();
+        if (!legacyUserId) throw new Error('legacy_decks_require_user: set LEGACY_USER_ID to an existing user before running this migration');
+        const legacyUser = await queryRunner.query('SELECT id FROM users WHERE id = ? LIMIT 1', [legacyUserId]);
+        if (!legacyUser.length) throw new Error(`legacy_user_not_found: ${legacyUserId}`);
+        await queryRunner.query('UPDATE decks SET user_id = ? WHERE user_id IS NULL', [legacyUserId]);
+      }
+
+      if (decks?.findColumnByName('user_id')?.isNullable !== false) {
+        await queryRunner.changeColumn('decks', 'user_id', new TableColumn({ name: 'user_id', type: 'char', length: '36', isNullable: false }));
       }
     }
 

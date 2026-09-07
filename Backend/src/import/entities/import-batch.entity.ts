@@ -1,4 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { DeckEntity } from '../../decks/entities/deck.entity';
+import { UserEntity } from '../../users/entities/user.entity';
 
 @Entity({ name: 'import_batches' })
 @Index('idx_import_batches_user_created', ['userId', 'createdAt'])
@@ -9,8 +11,16 @@ export class ImportBatchEntity {
   @Column({ name: 'deck_id', type: 'char', length: 36 })
   deckId!: string;
 
+  @ManyToOne(() => DeckEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'deck_id' })
+  deck!: DeckEntity;
+
   @Column({ name: 'user_id', type: 'char', length: 36 })
   userId!: string;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user!: UserEntity;
 
   @Column({ name: 'file_name', type: 'varchar', length: 255 })
   fileName!: string;

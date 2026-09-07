@@ -155,6 +155,6 @@ users + auth (JWT httpOnly cookie)
         -> thay mock repository bằng HTTP adapter
 ```
 
-- MySQL dùng các biến `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`; API chạy cổng `PORT=4000` và chỉ cho phép `FRONTEND_ORIGIN=http://localhost:3000`.
+- MySQL dùng các biến `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`; API chạy cổng `PORT=4001` và chỉ cho phép `FRONTEND_ORIGIN=http://localhost:3001`.
 - Migration `1730000000000-initial-schema` tạo schema đầy đủ cho DB mới; migration `1730000001000-complete-auth-schema` nâng cấp DB đã chạy schema hai bảng trước đó.
 - Frontend gửi `credentials: include`, không lưu token trong localStorage. Route dữ liệu yêu cầu đăng nhập và tự chuyển về `/login` khi session hết hạn.

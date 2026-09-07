@@ -8,6 +8,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (!(exception instanceof HttpException)) {
+      const message = exception instanceof Error ? exception.message : String(exception);
+      console.error(`[API] Unhandled exception: ${message}`, exception instanceof Error ? exception.stack : undefined);
+    }
     const raw = exception instanceof HttpException ? exception.getResponse() : null;
     const body = typeof raw === 'object' && raw !== null ? raw as Record<string, unknown> : {};
     const validationMessages = Array.isArray(body.message) ? body.message : undefined;
