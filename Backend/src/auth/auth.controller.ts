@@ -5,6 +5,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import type { UserEntity } from '../users/entities/user.entity';
 
 const cookieOptions = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/' };
@@ -40,9 +41,25 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: UserEntity) { return { id: user.id, email: user.email, createdAt: user.createdAt.toISOString() }; }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('password')
+  async changePassword(@CurrentUser() user: UserEntity, @Body() dto: ChangePasswordDto, @Res({ passthrough: true }) response: Response) {
+    await this.service.changePassword(user.id, dto);
+    response.clearCookie('access_token', cookieOptions);
+    response.clearCookie('refresh_token', cookieOptions);
+    return { ok: true };
+  }
+
   @Post('logout')
-  logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('access_token', cookieOptions); response.clearCookie('refresh_token', cookieOptions); return { ok: true };
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
+    try {
+      const refreshToken = request.cookies?.refresh_token;
+      if (refreshToken) await this.service.revokeRefreshToken(refreshToken);
+      return { ok: true };
+    } finally {
+      response.clearCookie('access_token', cookieOptions);
+      response.clearCookie('refresh_token', cookieOptions);
+    }
   }
 
   private setCookies(response: Response, tokens: { accessToken: string; refreshToken: string }) {

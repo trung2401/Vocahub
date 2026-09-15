@@ -92,8 +92,13 @@ export const copy = {
   study: {
     exit: 'Thoát',
     flipHint: 'Chạm để lật',
+    flipToBack: 'Lật thẻ để xem nghĩa',
+    flipToFront: 'Lật lại mặt trước',
     front: 'ĐỒNG TỪ',
     back: 'NGHĨA',
+    termLabel: 'TỪ VỰNG',
+    meaningLabel: 'NGHĨA CHÍNH',
+    rateHint: 'Chọn mức độ nhớ để tiếp tục',
     again: 'Chưa nhớ',
     hard: 'Nhớ mơ hồ',
     good: 'Đã nhớ',
@@ -103,6 +108,9 @@ export const copy = {
     incorrect: 'Không chính xác.',
     correct: 'Chính xác!',
     completed: 'Hoàn thành phiên học',
+    sessionComplete: 'PHIÊN HỌC ĐÃ XONG',
+    flashcardCompleteHint: 'Bạn đã đi qua toàn bộ thẻ trong phiên này.',
+    quizCompleteHint: 'Một vòng luyện tập gọn gàng, thêm một bước tiến mới.',
     score: 'điểm xuất sắc',
     reviewWrong: 'Học lại các câu sai',
     viewDeck: 'Xem deck',
@@ -118,7 +126,9 @@ export const copy = {
   statuses: { new: 'Mới', learning: 'Đang học', mastered: 'Đã thuộc' },
   errors: {
     insufficientChoices: 'Deck cần ít nhất 4 nghĩa khác nhau để làm quiz.',
-    storage: 'Không thể lưu dữ liệu. Vui lòng thử lại.'
+    storage: 'Không thể lưu dữ liệu. Vui lòng thử lại.',
+    review: 'Không thể lưu kết quả học. Vui lòng thử lại.',
+    retryReview: 'Thử lưu lại'
   }
 } as const;
 

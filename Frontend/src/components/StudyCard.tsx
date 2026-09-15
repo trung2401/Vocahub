@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw, Volume2 } from 'lucide-react';
+import { Keyboard, RotateCcw, Volume2 } from 'lucide-react';
 import { copy } from '@/data/mockData';
 import type { VocabularyEntry } from '@/domain/types';
 
@@ -11,5 +11,41 @@ export interface StudyCardProps {
 }
 
 export function StudyCard({ entry, flipped, onFlip }: Readonly<StudyCardProps>) {
-  return <button className="study-card" type="button" onClick={onFlip} aria-label="Lật thẻ flashcard" aria-pressed={flipped}><span className="card-label">{flipped ? copy.study.back : copy.study.front}</span><Volume2 className="icon-button" size={14} aria-label="Phát âm" /><h1>{flipped ? entry.meaning : entry.term}</h1>{flipped ? <p>{entry.pronunciation} · {entry.example}</p> : <p className="flip-hint"><RotateCcw size={11} /> {copy.study.flipHint}</p>}</button>;
+  return (
+    <button
+      className={`study-card ${flipped ? 'is-flipped' : ''}`}
+      type="button"
+      onClick={onFlip}
+      aria-label={flipped ? copy.study.flipToFront : copy.study.flipToBack}
+      aria-pressed={flipped}
+    >
+      <span className="study-card-inner">
+        <span className="study-card-topline">
+          <span className="card-label">{flipped ? copy.study.back : copy.study.front}</span>
+          <span className="audio-mark" aria-hidden="true"><Volume2 size={18} /></span>
+        </span>
+        <span className="study-card-main" key={flipped ? 'back' : 'front'}>
+          {flipped ? (
+            <>
+              <span className="study-card-kicker">{copy.study.meaningLabel}</span>
+              <span className="study-card-meaning">{entry.meaning}</span>
+              <span className="study-card-details">
+                {entry.pronunciation && <span className="pronunciation">{entry.pronunciation}</span>}
+                {entry.partOfSpeech && <span className="part-of-speech">{entry.partOfSpeech}</span>}
+              </span>
+              {entry.example && <span className="study-card-example"><span>Ví dụ</span>{entry.example}</span>}
+            </>
+          ) : (
+            <>
+              <span className="study-card-kicker">{copy.study.termLabel}</span>
+              <span className="study-card-term">{entry.term}</span>
+            </>
+          )}
+        </span>
+        <span className="study-card-footer">
+          {flipped ? <><span className="rating-hint">{copy.study.rateHint}</span><span className="keyboard-hint"><Keyboard size={13} /> Space</span></> : <><span className="flip-hint"><RotateCcw size={12} /> {copy.study.flipHint}</span><span className="keyboard-hint"><Keyboard size={13} /> Space</span></>}
+        </span>
+      </span>
+    </button>
+  );
 }

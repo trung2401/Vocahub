@@ -12,14 +12,32 @@
   --color-danger: #b42318;
   --color-focus: #14b8a6;
   --color-muted: #eef1f3;
+  --color-muted-strong: #e4e9eb;
+  --color-canvas-deep: #eef3f2;
+  --color-ink-soft: #30434a;
+  --color-accent-wash: #f0f8f6;
   --color-danger-soft: #fff1f0;
   --color-warning-soft: #fff7ed;
   --color-success-soft: #eefbf3;
+  --color-study-canvas: #edf4f3;
+  --color-study-surface: #fbfdfc;
+  --color-study-ink: #12302f;
+  --color-study-muted: #6b7b80;
+  --color-coral: #d6534d;
+  --color-coral-soft: #fff0ed;
+  --color-amber: #bd7518;
+  --color-amber-soft: #fff6e7;
+  --color-blue-soft: #edf4ff;
+  --color-blue: #3567a9;
   --shadow-soft: 0 6px 18px rgb(23 32 42 / 8%);
+  --shadow-card: 0 12px 30px rgb(23 32 42 / 6%), 0 2px 8px rgb(23 32 42 / 4%);
+  --shadow-dialog: 0 24px 64px rgb(23 32 42 / 18%), 0 8px 24px rgb(23 32 42 / 10%);
+  --shadow-study: 0 24px 60px rgb(18 48 47 / 12%), 0 4px 14px rgb(18 48 47 / 8%);
   --radius-card: 8px;
   --radius-control: 6px;
   --sidebar-width: 248px;
   --content-max: 1280px;
+  --content-reading: 1120px;
 }
 
 @media (prefers-color-scheme: dark) {

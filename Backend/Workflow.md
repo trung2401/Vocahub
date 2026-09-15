@@ -153,7 +153,17 @@ Ràng buộc nghiệp vụ enforce ở **service layer**, không phải DB const
 | `created_at` | datetime | |
 | `updated_at` | datetime | |
 
-### 4.4 `review_logs` *(bật trong MVP để lưu lịch sử ôn tập)*
+### 4.4 `refresh_sessions`
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| `id` | UUID (PK) | |
+| `user_id` | UUID (FK → users) | cascade khi xóa user |
+| `token_hash` | char(64), unique | SHA-256 của refresh JWT, không lưu token gốc |
+| `expires_at` | datetime | |
+| `created_at` | datetime | |
+| `revoked_at` | datetime, nullable | thời điểm revoke/rotate |
+
+### 4.5 `review_logs` *(bật trong MVP để lưu lịch sử ôn tập)*
 | Cột | Kiểu | Ghi chú |
 |---|---|---|
 | `id` | UUID (PK) | |
@@ -163,7 +173,7 @@ Ràng buộc nghiệp vụ enforce ở **service layer**, không phải DB const
 | `mode` | enum(`flashcard`, `quiz`) | |
 | `reviewed_at` | datetime | |
 
-### 4.5 `import_batches` *(bật trong MVP để lưu lịch sử import)*
+### 4.6 `import_batches` *(bật trong MVP để lưu lịch sử import)*
 | Cột | Kiểu | Ghi chú |
 |---|---|---|
 | `id` | UUID (PK) | |
@@ -230,7 +240,6 @@ Lỗi trả về đúng `code` ở bảng mục 9 `Tech_Architecture.md` (`inval
 
 ## 7. Việc cố tình chưa làm ở Phase 4
 
-- Chưa có refresh-token revocation theo từng thiết bị; MVP dùng refresh JWT stateless và xoay token khi refresh.
 - Chưa làm sync/conflict resolution giữa Dexie local và server — câu hỏi mở ở mục 10 `PRD.md`, cần quyết định riêng trước khi code.
 - Đã tạo và ghi `review_logs`/`import_batches`; UI thống kê chi tiết vẫn để phase sau.
 - Chưa cache/proxy gì thêm — khác Movie App, VocaHub không có provider ngoài nên không cần layer `*-proxy`.

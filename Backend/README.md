@@ -34,8 +34,9 @@ Auth endpoints:
 
 - `POST /auth/register` — tạo tài khoản và set cookie phiên
 - `POST /auth/login` — đăng nhập
-- `POST /auth/refresh` — cấp lại access cookie từ refresh cookie
-- `POST /auth/logout` — xóa cookie
+- `POST /auth/refresh` — xoay refresh session và cấp lại access/refresh cookie
+- `POST /auth/logout` — revoke các session của refresh cookie hiện tại và xóa cookie
+- `POST /auth/password` — đổi mật khẩu (yêu cầu access cookie) và revoke toàn bộ session
 - `GET /auth/me` — lấy user hiện tại
 
 ## Endpoint chính
@@ -47,8 +48,8 @@ Auth endpoints:
 - `GET /decks/:deckId/due?now=...`
 - `POST /imports/decks` để tạo deck và entries trong một transaction
 
-Migration đầu tiên tạo đủ `users`, `decks`, `vocabulary_entries`, `review_logs` và
-`import_batches`. Migration `1730000001000-complete-auth-schema` dùng để nâng cấp
+Các migration tạo đủ `users`, `decks`, `vocabulary_entries`, `review_logs`,
+`import_batches` và `refresh_sessions`. Migration `1730000001000-complete-auth-schema` dùng để nâng cấp
 database đã chạy schema hai bảng cũ.
 
 Khi nâng cấp database cũ, nếu `decks.user_id` có giá trị `NULL`, cần tạo một tài khoản

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createId } from '../lib/id';
@@ -21,6 +21,11 @@ export class UsersService {
     const normalizedEmail = email.trim().toLowerCase();
     if (await this.findByEmail(normalizedEmail)) throw new ConflictException({ code: 'email_taken', message: 'Email đã được sử dụng.' });
     return this.users.save(this.users.create({ id: createId(), email: normalizedEmail, passwordHash }));
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    const result = await this.users.update({ id }, { passwordHash });
+    if (!result.affected) throw new NotFoundException({ code: 'not_found', message: 'Người dùng không tồn tại.' });
   }
 
   toPublicUser(user: UserEntity): PublicUserDto {

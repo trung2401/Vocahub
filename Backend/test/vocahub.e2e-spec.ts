@@ -44,6 +44,7 @@ describeE2e('VocaHub backend golden path', () => {
 
     const imported = await request<{ deck: { id: string } }>('/imports/decks', { method: 'POST', body: JSON.stringify({ name: 'E2E imported', fileName: 'words.csv', entries }) }, cookies);
     expect(imported.response.status).toBe(201);
+    const staleCookies = cookies;
     const refreshed = await request('/auth/refresh', { method: 'POST' }, cookies);
     expect(refreshed.response.status).toBe(201);
     cookies = cookieHeader(refreshed.response) || cookies;
@@ -52,5 +53,14 @@ describeE2e('VocaHub backend golden path', () => {
 
     expect((await request(`/decks/${deckId}`, { method: 'DELETE' }, cookies)).response.status).toBe(200);
     expect((await request(`/decks/${imported.body.deck.id}`, { method: 'DELETE' }, cookies)).response.status).toBe(200);
+
+    const replayed = await request('/auth/refresh', { method: 'POST' }, staleCookies);
+    expect(replayed.response.status).toBe(401);
+
+    const loggedInAgain = await request('/auth/login', { method: 'POST', body: credentials });
+    expect(loggedInAgain.response.status).toBe(201);
+    const logoutCookies = cookieHeader(loggedInAgain.response);
+    expect((await request('/auth/logout', { method: 'POST' }, logoutCookies)).response.status).toBe(201);
+    expect((await request('/auth/refresh', { method: 'POST' }, logoutCookies)).response.status).toBe(401);
   }, 30_000);
 });
