@@ -14,6 +14,9 @@ export class DecksController {
   @Get()
   list(@CurrentUser() user: UserEntity) { return this.service.list(user.id); }
 
+  @Get('summary')
+  summaries(@CurrentUser() user: UserEntity) { return this.service.listSummaries(user.id); }
+
   @Get(':id')
   get(@Param('id') id: string, @CurrentUser() user: UserEntity) { return this.service.get(id, user.id); }
 

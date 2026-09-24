@@ -23,4 +23,21 @@ describe('apiRequest', () => {
 
     await expect(apiRequest('/decks')).rejects.toEqual(expect.objectContaining({ status: 401, code: 'invalid_token' }));
   });
+
+  it('shares one refresh request between concurrent 401 responses', async () => {
+    const unauthorized = () => new Response(JSON.stringify({ error: { code: 'invalid_token', message: 'expired' } }), { status: 401 });
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'deck-1' }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 'deck-1' }]), { status: 200 }));
+
+    await expect(Promise.all([apiRequest('/decks'), apiRequest('/decks')])).resolves.toEqual([
+      [{ id: 'deck-1' }],
+      [{ id: 'deck-1' }]
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1);
+  });
 });

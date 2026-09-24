@@ -1,11 +1,11 @@
 import { createSampleEntries, sampleDeck } from '@/data/mockData';
-import type { Deck, VocabularyEntry } from '@/domain/types';
+import type { Deck, DeckSummary, VocabularyEntry } from '@/domain/types';
 import type {
   CreateVocabularyInput,
   DeckRepository,
   ReviewResult,
   StudyRepository,
-  UpdateVocabularyInput,
+  UpdateVocabularyInput, VocabularyListPage, VocabularyListPageOptions,
   VocabularyRepository
 } from '@/data/ports/repositories';
 
@@ -14,8 +14,25 @@ const makeId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice
 export class MockDeckRepository implements DeckRepository {
   private decks: Deck[] = [sampleDeck];
 
+  public constructor(private readonly getEntries: () => VocabularyEntry[] = () => []) {}
+
   async list(): Promise<Deck[]> {
     return [...this.decks];
+  }
+
+  async listSummaries(): Promise<DeckSummary[]> {
+    const now = Date.now();
+    const entries = this.getEntries();
+    return this.decks.map((deck) => {
+      const deckEntries = entries.filter((entry) => entry.deckId === deck.id);
+      return {
+        deckId: deck.id,
+        totalEntries: deckEntries.length,
+        dueEntries: deckEntries.filter((entry) => Date.parse(entry.nextReviewAt) <= now).length,
+        masteredEntries: deckEntries.filter((entry) => entry.status === 'mastered').length,
+        learningEntries: deckEntries.filter((entry) => entry.status === 'learning').length
+      };
+    });
   }
 
   async get(id: string): Promise<Deck | null> {
@@ -50,8 +67,22 @@ export class MockDeckRepository implements DeckRepository {
 export class MockVocabularyRepository implements VocabularyRepository {
   private entries: VocabularyEntry[] = createSampleEntries();
 
+  snapshot(): VocabularyEntry[] {
+    return [...this.entries];
+  }
+
   async listByDeck(deckId: string): Promise<VocabularyEntry[]> {
     return this.entries.filter((entry) => entry.deckId === deckId);
+  }
+
+  async listPage(deckId: string, options: VocabularyListPageOptions = {}): Promise<VocabularyListPage> {
+    const search = options.search?.trim().toLocaleLowerCase();
+    const filtered = this.entries.filter((entry) => entry.deckId === deckId)
+      .filter((entry) => !options.status || entry.status === options.status)
+      .filter((entry) => !search || `${entry.term} ${entry.meaning}`.toLocaleLowerCase().includes(search));
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    return { items: filtered.slice(offset, offset + limit), total: filtered.length, limit, offset };
   }
 
   async getById(id: string): Promise<VocabularyEntry | null> {
@@ -70,7 +101,8 @@ export class MockVocabularyRepository implements VocabularyRepository {
       status: input.status ?? 'new',
       nextReviewAt: new Date().toISOString(),
       correctCount: 0,
-      incorrectCount: 0
+      incorrectCount: 0,
+      lastRating: undefined
     };
     this.entries = [entry, ...this.entries];
     return entry;
@@ -102,11 +134,12 @@ export class MockStudyRepository implements StudyRepository {
     if (!current) throw new Error('not_found');
     const nextReviewAt = new Date();
     nextReviewAt.setMinutes(nextReviewAt.getMinutes() + (input.rating === 'again' ? 10 : input.rating === 'hard' ? 60 * 24 : 60 * 24 * 3));
+    const consecutiveGood = input.rating === 'good' && current.lastRating === 'good';
     const status = input.rating === 'again' || input.rating === 'hard'
       ? 'learning'
       : current.status === 'mastered'
         ? 'mastered'
-        : current.status === 'learning' && current.correctCount + 1 >= 2
+        : consecutiveGood
           ? 'mastered'
           : 'learning';
     return this.vocabulary.update(current.id, {
@@ -114,7 +147,8 @@ export class MockStudyRepository implements StudyRepository {
       lastReviewedAt: new Date().toISOString(),
       nextReviewAt: nextReviewAt.toISOString(),
       correctCount: current.correctCount + (input.rating === 'good' ? 1 : 0),
-      incorrectCount: current.incorrectCount + (input.rating === 'good' ? 0 : 1)
+      incorrectCount: current.incorrectCount + (input.rating === 'good' ? 0 : 1),
+      lastRating: input.rating
     });
   }
 
@@ -125,7 +159,7 @@ export class MockStudyRepository implements StudyRepository {
 }
 
 export const createMockRepositories = () => {
-  const deck = new MockDeckRepository();
   const vocabulary = new MockVocabularyRepository();
+  const deck = new MockDeckRepository(() => vocabulary.snapshot());
   return { deck, vocabulary, study: new MockStudyRepository(vocabulary) };
 };

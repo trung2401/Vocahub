@@ -7,6 +7,18 @@ export class ApiClientError extends Error {
   }
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return request<T>(path, init, true);
 }
@@ -21,12 +33,7 @@ async function request<T>(path: string, init: RequestInit, allowRefresh: boolean
     throw new ApiClientError(0, 'network_unavailable', `Không thể kết nối tới máy chủ VocaHub (${API_URL}). Hãy kiểm tra backend và MySQL đang chạy.`);
   }
   if (response.status === 401 && allowRefresh && !path.startsWith('/auth/')) {
-    try {
-      const refreshed = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
-      if (refreshed.ok) return request<T>(path, init, false);
-    } catch {
-      // Keep the original 401 response so the caller receives a consistent API error.
-    }
+    if (await refreshSession()) return request<T>(path, init, false);
   }
   const payload = await response.json().catch(() => null) as { error?: { code?: string; message?: string } } | T | null;
   if (!response.ok) {

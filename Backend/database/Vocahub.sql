@@ -186,6 +186,7 @@ CREATE TABLE `vocabulary_entries` (
   `next_review_at` datetime(3) NOT NULL,
   `correct_count` int unsigned NOT NULL DEFAULT '0',
   `incorrect_count` int unsigned NOT NULL DEFAULT '0',
+  `last_rating` enum('again','hard','good') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),

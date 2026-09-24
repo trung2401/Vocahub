@@ -34,7 +34,7 @@ describe('AuthService', () => {
       toPublicUser: jest.fn().mockReturnValue({ id: 'user-1', email: 'user@example.test', createdAt: new Date().toISOString() })
     } as unknown as UsersService;
     const sessions = {
-      findOne: jest.fn().mockResolvedValue({ id: 'session-1', userId: 'user-1', tokenHash: createHash('sha256').update(oldToken).digest('hex'), expiresAt, revokedAt: null })
+      findOne: jest.fn().mockResolvedValue({ id: 'session-1', userId: 'user-1', tokenHash: createHash('sha256').update(oldToken).digest('hex'), expiresAt, revokedAt: null, replacedBy: null })
     };
     const managerRepository = {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -46,7 +46,7 @@ describe('AuthService', () => {
     const service = new AuthService(users, jwt, config, sessions as unknown as Repository<RefreshSessionEntity>, dataSource);
 
     await expect(service.refresh(oldToken)).resolves.toEqual(expect.objectContaining({ tokens: { accessToken: 'access-new', refreshToken: newToken } }));
-    expect(managerRepository.update).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1', userId: 'user-1' }), expect.objectContaining({ revokedAt: expect.any(Date) }));
+    expect(managerRepository.update).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-1', userId: 'user-1' }), expect.objectContaining({ revokedAt: expect.any(Date), replacedBy: expect.any(String) }));
     expect(managerRepository.save).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1', tokenHash: createHash('sha256').update(newToken).digest('hex'), revokedAt: null }));
   });
 
@@ -61,6 +61,44 @@ describe('AuthService', () => {
 
     await expect(service.refresh('replayed-token')).rejects.toMatchObject({ response: expect.objectContaining({ code: 'invalid_token' }) });
     expect(sessions.update).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }), expect.objectContaining({ revokedAt: expect.any(Date) }));
+  });
+
+  it('does not revoke the winning session when a concurrent rotation loses the atomic update', async () => {
+    const oldToken = 'refresh-old';
+    const jwt = {
+      verifyAsync: jest.fn().mockResolvedValue({ sub: 'user-1', email: 'user@example.test', exp: Math.floor(Date.now() / 1000) + 3600 }),
+      signAsync: jest.fn().mockResolvedValueOnce('access-new').mockResolvedValueOnce('refresh-new'),
+      decode: jest.fn().mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 })
+    } as unknown as JwtService;
+    const config = { get: jest.fn((key: string, fallback?: string) => ({ JWT_REFRESH_SECRET: 'r'.repeat(32), JWT_REFRESH_TTL: '7d' }[key] ?? fallback)) } as unknown as ConfigService;
+    const sessions = {
+      findOne: jest.fn().mockResolvedValue({ id: 'session-1', userId: 'user-1', expiresAt: new Date(Date.now() + 3600000), revokedAt: null, replacedBy: null }),
+      update: jest.fn()
+    };
+    const managerRepository = { update: jest.fn().mockResolvedValue({ affected: 0 }) };
+    const manager = { getRepository: jest.fn().mockReturnValue(managerRepository) };
+    const dataSource = { transaction: jest.fn(async (callback: (value: typeof manager) => Promise<unknown>) => callback(manager)) } as unknown as DataSource;
+    const users = {
+      findById: jest.fn().mockResolvedValue({ id: 'user-1', email: 'user@example.test', createdAt: new Date() }),
+      toPublicUser: jest.fn().mockReturnValue({ id: 'user-1' })
+    } as unknown as UsersService;
+    const service = new AuthService(users, jwt, config, sessions as unknown as Repository<RefreshSessionEntity>, dataSource);
+
+    await expect(service.refresh(oldToken)).rejects.toMatchObject({ response: expect.objectContaining({ code: 'invalid_token' }) });
+    expect(sessions.update).not.toHaveBeenCalled();
+  });
+
+  it('does not revoke all sessions when a rotated token is reused concurrently', async () => {
+    const jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: 'user-1', email: 'user@example.test', exp: Math.floor(Date.now() / 1000) + 3600 }) } as unknown as JwtService;
+    const config = { get: jest.fn((key: string, fallback?: string) => ({ JWT_REFRESH_SECRET: 'r'.repeat(32) }[key] ?? fallback)) } as unknown as ConfigService;
+    const sessions = {
+      findOne: jest.fn().mockResolvedValue({ id: 'session-1', userId: 'user-1', expiresAt: new Date(Date.now() + 3600000), revokedAt: new Date(), replacedBy: 'session-2' }),
+      update: jest.fn()
+    };
+    const service = new AuthService({} as UsersService, jwt, config, sessions as unknown as Repository<RefreshSessionEntity>, {} as DataSource);
+
+    await expect(service.refresh('rotated-token')).rejects.toMatchObject({ response: expect.objectContaining({ code: 'invalid_token' }) });
+    expect(sessions.update).not.toHaveBeenCalled();
   });
 
   it('revokes all sessions after changing the password', async () => {

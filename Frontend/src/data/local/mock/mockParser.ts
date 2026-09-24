@@ -1,33 +1,24 @@
 import type { ParsedTable, VocabularyFileParser } from '@/data/ports/repositories';
 import type { ImportIssue, ImportRow } from '@/domain/types';
+import { parseFileContents, type ParserWorkerSource } from './mockParserCore';
 
-type XlsxModule = typeof import('xlsx');
-type XlsxWorksheet = import('xlsx').WorkSheet;
+export { parseFileContents, type ParserWorkerSource } from './mockParserCore';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MAX_ROWS = 5000;
+const WORKER_THRESHOLD = 1 * 1024 * 1024;
 
-const cellToString = (value: unknown): string => {
-  if (value === null || value === undefined) return '';
-  if (value instanceof Date) return value.toISOString();
-  return String(value).replace(/^\uFEFF/, '').trim();
-};
-
-const parseWorksheet = (worksheet: XlsxWorksheet, xlsx: XlsxModule): ParsedTable => {
-  const matrix = xlsx.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: '', blankrows: false, raw: true });
-  if (!matrix.length) throw new Error('empty_file');
-
-  const headers = (matrix[0] ?? []).map(cellToString);
-  if (!headers.length || headers.some((header) => !header)) throw new Error('invalid_file');
-  const normalizedHeaders = headers.map((header) => header.toLocaleLowerCase());
-  if (new Set(normalizedHeaders).size !== normalizedHeaders.length) throw new Error('invalid_file');
-
-  const rows = matrix.slice(1).map((row) => Object.fromEntries(headers.map((header, index) => [header, cellToString(row[index])])))
-    .filter((row) => Object.values(row).some((value) => value.length > 0));
-  if (!rows.length) throw new Error('empty_file');
-  if (rows.length > MAX_ROWS) throw new Error('too_many_rows');
-  return { headers, rows };
-};
+const parseInWorker = (fileName: string, source: ParserWorkerSource): Promise<ParsedTable> => new Promise((resolve, reject) => {
+  const worker = new Worker(new URL('./mockParser.worker.ts', import.meta.url), { type: 'module' });
+  const finish = (callback: () => void) => { worker.terminate(); callback(); };
+  worker.onmessage = (event: MessageEvent<{ ok: true; table: ParsedTable } | { ok: false; error: string }>) => {
+    const result = event.data;
+    if (result.ok === true) finish(() => resolve(result.table));
+    else finish(() => reject(new Error(result.error)));
+  };
+  worker.onerror = () => finish(() => reject(new Error('invalid_file')));
+  if (source instanceof ArrayBuffer) worker.postMessage({ fileName, source }, [source]);
+  else worker.postMessage({ fileName, source });
+});
 
 export class MockVocabularyFileParser implements VocabularyFileParser {
   async parse(file: File): Promise<ParsedTable> {
@@ -35,13 +26,9 @@ export class MockVocabularyFileParser implements VocabularyFileParser {
     if (file.size > MAX_FILE_SIZE) throw new Error('too_large');
     if (file.size === 0) throw new Error('empty_file');
     try {
-      const xlsx = await import('xlsx');
-      const workbook = /\.csv$/i.test(file.name)
-        ? xlsx.read(await file.text(), { type: 'string', cellDates: true })
-        : xlsx.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-      const firstSheet = workbook.SheetNames[0];
-      if (!firstSheet) throw new Error('empty_file');
-      return parseWorksheet(workbook.Sheets[firstSheet], xlsx);
+      const source = /\.csv$/i.test(file.name) ? await file.text() : await file.arrayBuffer();
+      if (file.size >= WORKER_THRESHOLD && typeof Worker !== 'undefined') return await parseInWorker(file.name, source);
+      return await parseFileContents(file.name, source);
     } catch (error) {
       if (error instanceof Error && ['empty_file', 'invalid_file', 'too_many_rows'].includes(error.message)) throw error;
       throw new Error('invalid_file');

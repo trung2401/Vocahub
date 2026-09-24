@@ -46,6 +46,9 @@ export class VocabularyEntryEntity {
   @Column({ name: 'incorrect_count', type: 'int', unsigned: true, default: 0 })
   incorrectCount!: number;
 
+  @Column({ name: 'last_rating', type: 'enum', enum: ['again', 'hard', 'good'], nullable: true })
+  lastRating!: 'again' | 'hard' | 'good' | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'datetime', precision: 3 })
   createdAt!: Date;
 
