@@ -36,7 +36,7 @@ export class ImportService {
         return true;
       });
       if (!validItems.length) throw new BadRequestException({ code: 'invalid_required', message: 'Không có dòng import hợp lệ.' });
-      const entries = validItems.map((item) => entryRepository.create({ id: createId(), deckId: deck.id, term: item.term.trim(), meaning: item.meaning.trim(), pronunciation: item.pronunciation?.trim() || null, example: item.example?.trim() || null, partOfSpeech: item.partOfSpeech?.trim() || null, status: 'new', lastReviewedAt: null, nextReviewAt: now, correctCount: 0, incorrectCount: 0 }));
+      const entries = validItems.map((item) => entryRepository.create({ id: createId(), deckId: deck.id, term: item.term.trim(), meaning: item.meaning.trim(), pronunciation: item.pronunciation?.trim() || null, example: item.example?.trim() || null, partOfSpeech: item.partOfSpeech?.trim() || null, status: 'new', lastReviewedAt: null, nextReviewAt: now, correctCount: 0, incorrectCount: 0, lastRating: null }));
       const saved = await entryRepository.save(entries);
       await batchRepository.save(batchRepository.create({ id: createId(), deckId: deck.id, userId, fileName: dto.fileName?.trim() || 'import', totalRows: dto.entries.length, validRows: saved.length, invalidRows: dto.entries.length - saved.length }));
       return { deck: toDeckResponse(deck), entries: saved.map(toVocabularyResponse), counts: { total: dto.entries.length, created: saved.length, validRows: saved.length, invalidRows: dto.entries.length - saved.length } };

@@ -42,7 +42,10 @@ Auth endpoints:
 ## Endpoint chính
 
 - `GET/POST/PATCH/DELETE /decks`
+- `GET /decks/summary` — tổng hợp `totalEntries`, `dueEntries`, `masteredEntries`, `learningEntries` cho từng deck
 - `GET/POST /decks/:deckId/entries`
+- `GET /decks/:deckId/entries?limit=100&offset=0` hỗ trợ phân trang tương thích ngược (giới hạn tối đa 500 dòng/trang)
+- `GET /decks/:deckId/entries/page?limit=50&offset=0&search=...&status=...` trả trang từ vựng và tổng số kết quả sau lọc
 - `PATCH/DELETE /entries/:id`
 - `POST /entries/:id/review`
 - `GET /decks/:deckId/due?now=...`
@@ -51,6 +54,8 @@ Auth endpoints:
 Các migration tạo đủ `users`, `decks`, `vocabulary_entries`, `review_logs`,
 `import_batches` và `refresh_sessions`. Migration `1730000001000-complete-auth-schema` dùng để nâng cấp
 database đã chạy schema hai bảng cũ.
+Migration `1730000003000-refresh-session-replacement` bổ sung dấu vết rotation để hai
+request refresh đồng thời không vô tình revoke session mới của nhau.
 
 Khi nâng cấp database cũ, nếu `decks.user_id` có giá trị `NULL`, cần tạo một tài khoản
 đích trước rồi chạy migration với `LEGACY_USER_ID=<id tài khoản>`. Nếu database cũ chưa có
@@ -72,7 +77,8 @@ E2E cần MySQL chạy và database `vocahub` đã tồn tại. Chạy golden pa
 RUN_E2E=true npm run test:e2e
 ```
 
-Mặc định test E2E được skip để không che giấu việc môi trường chưa có backend/MySQL.
+Lệnh E2E không tự tạo backend/MySQL. Nếu chạy mà chưa cấu hình môi trường, test sẽ fail rõ ràng
+thay vì báo `skipped`, để CI không vô tình bỏ qua smoke test.
 
 ## Dependency audit
 

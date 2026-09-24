@@ -9,13 +9,17 @@ import { SummaryPanel } from '@/components/SummaryPanel';
 import { useApp } from '@/lib/app-context';
 import { copy } from '@/data/mockData';
 import { buildQuizQuestions } from '@/data/local/quiz';
+import type { VocabularyEntry } from '@/domain/types';
 
 export interface QuizPageProps { params: { deckId: string }; }
 
 export default function QuizPage({ params }: Readonly<QuizPageProps>) {
-  const { decks, entriesByDeck, recordReview } = useApp();
+  const { decks, listEntries, recordReview } = useApp();
   const deck = decks.find((item) => item.id === params.deckId);
-  const entries = useMemo(() => entriesByDeck[params.deckId] ?? [], [entriesByDeck, params.deckId]);
+  const deckLoaded = Boolean(deck);
+  const [entries, setEntries] = useState<VocabularyEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
+  const [entryLoadError, setEntryLoadError] = useState('');
   const questions = useMemo(() => buildQuizQuestions(entries), [entries]);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -27,6 +31,21 @@ export default function QuizPage({ params }: Readonly<QuizPageProps>) {
   const [reviewError, setReviewError] = useState('');
   const question = questions[index];
   const progress = questions.length ? Math.round(((index + 1) / questions.length) * 100) : 0;
+
+  useEffect(() => {
+    let active = true;
+    if (!deckLoaded) return () => { active = false; };
+    setEntriesLoading(true);
+    setEntryLoadError('');
+    void listEntries(params.deckId).then((nextEntries) => {
+      if (active) setEntries(nextEntries);
+    }).catch((caught: unknown) => {
+      if (active) setEntryLoadError(caught instanceof Error ? caught.message : copy.errors.storage);
+    }).finally(() => {
+      if (active) setEntriesLoading(false);
+    });
+    return () => { active = false; };
+  }, [deckLoaded, listEntries, params.deckId]);
 
   const next = useCallback(() => {
     if (savingReview || selected === null) return;
@@ -50,6 +69,8 @@ export default function QuizPage({ params }: Readonly<QuizPageProps>) {
   }, [next, params.deckId, selected]);
 
   if (!deck) return <div className="study-page" />;
+  if (entriesLoading) return <div className="study-page"><div className="study-empty" role="status"><LoaderCircle size={20} className="spin" /><p>Đang tải phiên quiz...</p></div></div>;
+  if (entryLoadError) return <div className="study-page"><div className="study-empty"><InlineError message={entryLoadError} /><Link className="button button-secondary" href={`/decks/${deck.id}`}><ArrowLeft size={14} />{copy.study.viewDeck}</Link></div></div>;
   if (!questions.length || !question) {
     return <div className="study-page"><QuizTopbar deckName={deck.name} current={0} total={0} onExit={`/decks/${deck.id}`} /><main className="study-content"><div className="study-empty"><span className="study-empty-icon"><Sparkles size={20} /></span><h1>{copy.errors.insufficientChoices}</h1><p>Thêm ít nhất bốn nghĩa khác nhau để mở phiên quiz.</p><Link className="button button-secondary" href={`/decks/${deck.id}`}><ArrowLeft size={14} />{copy.study.viewDeck}</Link></div></main></div>;
   }

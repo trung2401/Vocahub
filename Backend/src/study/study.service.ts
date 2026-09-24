@@ -16,7 +16,7 @@ export class StudyService {
   async recordReview(id: string, dto: RecordReviewDto, userId: string): Promise<VocabularyResponseDto> {
     const saved = await this.dataSource.transaction(async (manager) => {
       const entries = manager.getRepository(VocabularyEntryEntity);
-      const entry = await entries.findOne({ where: { id }, relations: ['deck'] });
+      const entry = await entries.findOne({ where: { id }, relations: ['deck'], lock: { mode: 'pessimistic_write' } });
       if (!entry || entry.deck?.userId !== userId) throw new NotFoundException({ code: 'not_found', message: 'Từ vựng không tồn tại.' });
       const result = scheduleReview(entry, dto.rating);
       entry.status = result.status;
@@ -24,6 +24,7 @@ export class StudyService {
       entry.lastReviewedAt = new Date();
       entry.correctCount = result.correctCount;
       entry.incorrectCount = result.incorrectCount;
+      entry.lastRating = result.lastRating;
       const updated = await entries.save(entry);
       await this.reviewLogs.create({ vocabularyEntryId: updated.id, deckId: updated.deckId, userId, rating: dto.rating, mode: dto.mode ?? 'flashcard' }, manager.getRepository(ReviewLogEntity));
       return updated;

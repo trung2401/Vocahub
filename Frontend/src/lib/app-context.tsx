@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import type { Deck, ImportRow, VocabularyEntry } from '@/domain/types';
-import type { CreateVocabularyInput, ReviewResult, UpdateVocabularyInput } from '@/data/ports/repositories';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type { Deck, DeckSummary, ImportRow, VocabularyEntry } from '@/domain/types';
+import type { CreateVocabularyInput, ReviewResult, UpdateVocabularyInput, VocabularyListPage, VocabularyListPageOptions } from '@/data/ports/repositories';
 import { createHttpRepositories, importDeck } from '@/data/http/httpRepositories';
 import { apiRequest } from '@/data/http/httpClient';
 import { MockVocabularyFileParser } from '@/data/local/mock/mockParser';
@@ -12,7 +12,9 @@ export interface AuthUser { id: string; email: string; createdAt: string; }
 
 interface AppContextValue {
   decks: Deck[];
-  entriesByDeck: Record<string, VocabularyEntry[]>;
+  summariesByDeck: Record<string, DeckSummary>;
+  listEntries: (deckId: string) => Promise<VocabularyEntry[]>;
+  listEntryPage: (deckId: string, options?: VocabularyListPageOptions) => Promise<VocabularyListPage>;
   refresh: () => Promise<void>;
   createDeck: (name: string, source?: Deck['source']) => Promise<Deck>;
   renameDeck: (id: string, name: string) => Promise<void>;
@@ -41,7 +43,8 @@ export function AppProvider({ children }: Readonly<AppProviderProps>) {
   const pathname = usePathname();
   const router = useRouter();
   const [decks, setDecks] = useState<Deck[]>([]);
-  const [entriesByDeck, setEntriesByDeck] = useState<Record<string, VocabularyEntry[]>>({});
+  const [summariesByDeck, setSummariesByDeck] = useState<Record<string, DeckSummary>>({});
+  const refreshVersion = useRef(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -64,17 +67,31 @@ export function AppProvider({ children }: Readonly<AppProviderProps>) {
   }, [authLoading, pathname, router, user]);
 
   const refresh = useCallback(async () => {
-    const nextDecks = await repositories.deck.list();
-    const entries = await Promise.all(nextDecks.map(async (deck) => [deck.id, await repositories.vocabulary.listByDeck(deck.id)] as const));
+    const version = ++refreshVersion.current;
+    const [nextDecks, summaries] = await Promise.all([repositories.deck.list(), repositories.deck.listSummaries()]);
+    // A slower refresh must not overwrite a newer review/import result.
+    if (version !== refreshVersion.current) return;
     setDecks(nextDecks);
-    setEntriesByDeck(Object.fromEntries(entries));
+    setSummariesByDeck(Object.fromEntries(summaries.map((summary) => [summary.deckId, summary])));
   }, [repositories]);
 
-  useEffect(() => { if (user) void refresh(); }, [refresh, user]);
+  useEffect(() => {
+    if (user) void refresh();
+    else {
+      setDecks([]);
+      setSummariesByDeck({});
+    }
+  }, [refresh, user]);
+
+  const listEntries = useCallback((deckId: string) => repositories.vocabulary.listByDeck(deckId), [repositories]);
+  const listEntryPage = useCallback((deckId: string, options?: VocabularyListPageOptions) => repositories.vocabulary.listPage(deckId, options), [repositories]);
+  const parser = useMemo(() => new MockVocabularyFileParser(), []);
 
   const value = useMemo<AppContextValue>(() => ({
     decks,
-    entriesByDeck,
+    summariesByDeck,
+    listEntries,
+    listEntryPage,
     refresh,
     createDeck: async (name, source = 'manual') => {
       const deck = await repositories.deck.create({ name, source });
@@ -100,13 +117,13 @@ export function AppProvider({ children }: Readonly<AppProviderProps>) {
       await refresh();
       return imported.deck;
     },
-    parser: new MockVocabularyFileParser(),
+    parser,
     user,
     authLoading,
     login: async (email, password) => { const nextUser = await apiRequest<AuthUser>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }); setUser(nextUser); setAuthLoading(false); router.replace('/'); },
     register: async (email, password) => { const nextUser = await apiRequest<AuthUser>('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }); setUser(nextUser); setAuthLoading(false); router.replace('/'); },
     logout: async () => { await apiRequest<{ ok: boolean }>('/auth/logout', { method: 'POST' }); setUser(null); router.replace('/login'); }
-  }), [authLoading, decks, entriesByDeck, refresh, repositories, router, user]);
+  }), [authLoading, decks, listEntries, listEntryPage, parser, refresh, repositories, router, summariesByDeck, user]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

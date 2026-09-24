@@ -8,6 +8,14 @@ export interface Deck {
   updatedAt: string;
 }
 
+export interface DeckSummary {
+  deckId: string;
+  totalEntries: number;
+  dueEntries: number;
+  masteredEntries: number;
+  learningEntries: number;
+}
+
 export interface VocabularyEntry {
   id: string;
   deckId: string;
@@ -21,6 +29,7 @@ export interface VocabularyEntry {
   nextReviewAt: string;
   correctCount: number;
   incorrectCount: number;
+  lastRating?: 'again' | 'hard' | 'good';
 }
 
 export interface ImportRow {

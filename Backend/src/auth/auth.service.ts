@@ -47,7 +47,7 @@ export class AuthService {
       const session = await sessions.findOne({ where: { tokenHash: this.hashRefreshToken(refreshToken) } });
       if (!session || session.userId !== payload.sub) throw this.invalidToken();
       if (session.revokedAt) {
-        await this.revokeAllSessions(session.userId);
+        if (!session.replacedBy) await this.revokeAllSessions(session.userId);
         throw this.invalidToken();
       }
       const sessionExpiresAt = new Date(session.expiresAt).getTime();
@@ -57,27 +57,30 @@ export class AuthService {
 
       const tokens = await this.issueTokens(user.id, user.email);
       const expiresAt = this.refreshTokenExpiresAt(tokens.refreshToken);
+      const replacementId = createId();
       let rotated = false;
       const dataSource = this.requireDataSource();
       await dataSource.transaction(async (manager) => {
         const repository = manager.getRepository(RefreshSessionEntity);
         const result = await repository.update(
           { id: session.id, userId: session.userId, revokedAt: IsNull() },
-          { revokedAt: new Date() }
+          { revokedAt: new Date(), replacedBy: replacementId }
         );
         if (result.affected !== 1) return;
         await repository.save(repository.create({
-          id: createId(),
+          id: replacementId,
           userId: user.id,
           tokenHash: this.hashRefreshToken(tokens.refreshToken),
           expiresAt,
-          revokedAt: null
+          revokedAt: null,
+          replacedBy: null
         }));
         rotated = true;
       });
 
       if (!rotated) {
-        await this.revokeAllSessions(session.userId);
+        // Another request may have rotated this token while this request was
+        // waiting. The atomic update already rejected this caller.
         throw this.invalidToken();
       }
       return { user: this.users.toPublicUser(user), tokens };
@@ -124,7 +127,8 @@ export class AuthService {
       userId: id,
       tokenHash: this.hashRefreshToken(tokens.refreshToken),
       expiresAt: this.refreshTokenExpiresAt(tokens.refreshToken),
-      revokedAt: null
+      revokedAt: null,
+      replacedBy: null
     }));
     return tokens;
   }

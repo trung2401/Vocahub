@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -7,12 +8,13 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import type { UserEntity } from '../users/entities/user.entity';
+import { durationToMilliseconds } from '../config/duration';
 
 const cookieOptions = { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/' };
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly service: AuthService) {}
+  constructor(private readonly service: AuthService, private readonly config: ConfigService) {}
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -63,7 +65,9 @@ export class AuthController {
   }
 
   private setCookies(response: Response, tokens: { accessToken: string; refreshToken: string }) {
-    response.cookie('access_token', tokens.accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-    response.cookie('refresh_token', tokens.refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    const accessTtl = this.config.get<string>('JWT_ACCESS_TTL', '15m');
+    const refreshTtl = this.config.get<string>('JWT_REFRESH_TTL', '7d');
+    response.cookie('access_token', tokens.accessToken, { ...cookieOptions, maxAge: durationToMilliseconds(accessTtl) });
+    response.cookie('refresh_token', tokens.refreshToken, { ...cookieOptions, maxAge: durationToMilliseconds(refreshTtl) });
   }
 }

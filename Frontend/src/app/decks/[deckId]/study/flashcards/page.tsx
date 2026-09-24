@@ -9,14 +9,18 @@ import { SummaryPanel } from '@/components/SummaryPanel';
 import { useApp } from '@/lib/app-context';
 import { copy } from '@/data/mockData';
 import { selectFlashcardEntries } from '@/data/local/study';
+import type { VocabularyEntry } from '@/domain/types';
 
 export interface FlashcardPageProps { params: { deckId: string }; }
 type Rating = 'again' | 'hard' | 'good';
 
 export default function FlashcardPage({ params }: Readonly<FlashcardPageProps>) {
-  const { decks, entriesByDeck, recordReview } = useApp();
+  const { decks, listEntries, recordReview } = useApp();
   const deck = decks.find((item) => item.id === params.deckId);
-  const allEntries = useMemo(() => entriesByDeck[params.deckId] ?? [], [entriesByDeck, params.deckId]);
+  const deckLoaded = Boolean(deck);
+  const [allEntries, setAllEntries] = useState<VocabularyEntry[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
+  const [entryLoadError, setEntryLoadError] = useState('');
   const entries = useMemo(() => selectFlashcardEntries(allEntries), [allEntries]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -30,6 +34,21 @@ export default function FlashcardPage({ params }: Readonly<FlashcardPageProps>) 
   const progress = entries.length ? Math.round(((index + 1) / entries.length) * 100) : 0;
 
   useEffect(() => {
+    let active = true;
+    if (!deckLoaded) return () => { active = false; };
+    setEntriesLoading(true);
+    setEntryLoadError('');
+    void listEntries(params.deckId).then((nextEntries) => {
+      if (active) setAllEntries(nextEntries);
+    }).catch((caught: unknown) => {
+      if (active) setEntryLoadError(caught instanceof Error ? caught.message : copy.errors.storage);
+    }).finally(() => {
+      if (active) setEntriesLoading(false);
+    });
+    return () => { active = false; };
+  }, [deckLoaded, listEntries, params.deckId]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.code === 'Space' || event.key === ' ') {
         event.preventDefault();
@@ -41,9 +60,12 @@ export default function FlashcardPage({ params }: Readonly<FlashcardPageProps>) 
     return () => window.removeEventListener('keydown', onKey);
   }, [params.deckId, savingReview]);
 
-  if (!deck || !current) {
+  if (!deck) {
     return <div className="study-page"><div className="study-empty"><h1>{copy.deck.emptyTitle}</h1><Link className="button button-secondary" href="/"><ArrowLeft size={14} />{copy.study.viewDeck}</Link></div></div>;
   }
+  if (entriesLoading) return <div className="study-page"><div className="study-empty" role="status"><LoaderCircle size={20} className="spin" /><p>Đang tải phiên học...</p></div></div>;
+  if (entryLoadError) return <div className="study-page"><div className="study-empty"><InlineError message={entryLoadError} /><Link className="button button-secondary" href={`/decks/${deck.id}`}><ArrowLeft size={14} />{copy.study.viewDeck}</Link></div></div>;
+  if (!current) return <div className="study-page"><div className="study-empty"><h1>{copy.deck.emptyTitle}</h1><Link className="button button-secondary" href={`/decks/${deck.id}`}><ArrowLeft size={14} />{copy.study.viewDeck}</Link></div></div>;
 
   const rate = async (rating: Rating) => {
     if (savingReview) return;

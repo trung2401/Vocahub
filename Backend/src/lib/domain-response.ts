@@ -9,6 +9,21 @@ export interface DeckResponseDto {
   updatedAt: string;
 }
 
+export interface DeckSummaryResponseDto {
+  deckId: string;
+  totalEntries: number;
+  dueEntries: number;
+  masteredEntries: number;
+  learningEntries: number;
+}
+
+export interface VocabularyPageResponseDto {
+  items: VocabularyResponseDto[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface VocabularyResponseDto {
   id: string;
   deckId: string;
@@ -22,6 +37,7 @@ export interface VocabularyResponseDto {
   nextReviewAt: string;
   correctCount: number;
   incorrectCount: number;
+  lastRating?: 'again' | 'hard' | 'good';
 }
 
 export const toDeckResponse = (entity: DeckEntity): DeckResponseDto => ({ id: entity.id, name: entity.name, source: entity.source, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() });
@@ -31,5 +47,6 @@ export const toVocabularyResponse = (entity: VocabularyEntryEntity): VocabularyR
   ...(entity.pronunciation ? { pronunciation: entity.pronunciation } : {}),
   ...(entity.example ? { example: entity.example } : {}),
   ...(entity.partOfSpeech ? { partOfSpeech: entity.partOfSpeech } : {}), status: entity.status,
-  ...(entity.lastReviewedAt ? { lastReviewedAt: entity.lastReviewedAt.toISOString() } : {}), nextReviewAt: entity.nextReviewAt.toISOString(), correctCount: entity.correctCount, incorrectCount: entity.incorrectCount
+  ...(entity.lastReviewedAt ? { lastReviewedAt: entity.lastReviewedAt.toISOString() } : {}), nextReviewAt: entity.nextReviewAt.toISOString(), correctCount: entity.correctCount, incorrectCount: entity.incorrectCount,
+  ...(entity.lastRating ? { lastRating: entity.lastRating } : {})
 });

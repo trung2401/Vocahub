@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createId } from '../lib/id';
-import { toDeckResponse, type DeckResponseDto } from '../lib/domain-response';
+import { toDeckResponse, type DeckResponseDto, type DeckSummaryResponseDto } from '../lib/domain-response';
 import { DeckEntity } from './entities/deck.entity';
 import { CreateDeckDto } from './dto/create-deck.dto';
 import { UpdateDeckDto } from './dto/update-deck.dto';
@@ -14,6 +14,28 @@ export class DecksService {
   async list(userId: string): Promise<DeckResponseDto[]> {
     const entities = await this.decks.find({ where: { userId }, order: { updatedAt: 'DESC' } });
     return entities.map(toDeckResponse);
+  }
+
+  async listSummaries(userId: string): Promise<DeckSummaryResponseDto[]> {
+    const rows = await this.decks.createQueryBuilder('deck')
+      .leftJoin('deck.entries', 'entry')
+      .select('deck.id', 'deckId')
+      .addSelect('COUNT(entry.id)', 'totalEntries')
+      .addSelect('COALESCE(SUM(CASE WHEN entry.id IS NOT NULL AND entry.next_review_at <= :now THEN 1 ELSE 0 END), 0)', 'dueEntries')
+      .addSelect("COALESCE(SUM(CASE WHEN entry.status = 'mastered' THEN 1 ELSE 0 END), 0)", 'masteredEntries')
+      .addSelect("COALESCE(SUM(CASE WHEN entry.status = 'learning' THEN 1 ELSE 0 END), 0)", 'learningEntries')
+      .where('deck.user_id = :userId', { userId })
+      .setParameter('now', new Date())
+      .groupBy('deck.id')
+      .getRawMany<{ deckId: string; totalEntries: string | number; dueEntries: string | number; masteredEntries: string | number; learningEntries: string | number }>();
+
+    return rows.map((row) => ({
+      deckId: row.deckId,
+      totalEntries: Number(row.totalEntries ?? 0),
+      dueEntries: Number(row.dueEntries ?? 0),
+      masteredEntries: Number(row.masteredEntries ?? 0),
+      learningEntries: Number(row.learningEntries ?? 0)
+    }));
   }
 
   async get(id: string, userId: string): Promise<DeckResponseDto> {

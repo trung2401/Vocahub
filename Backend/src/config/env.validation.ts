@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { IsBooleanString, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Min, MinLength, validateSync } from 'class-validator';
+import { durationPattern } from './duration';
 
 class EnvironmentVariables {
   @IsInt()
@@ -35,10 +36,10 @@ class EnvironmentVariables {
   @IsString() @IsNotEmpty() @MinLength(32)
   JWT_REFRESH_SECRET!: string;
 
-  @IsOptional() @IsString() @Matches(/^[1-9]\d*(ms|s|m|h|d|w)$/)
+  @IsOptional() @IsString() @Matches(durationPattern)
   JWT_ACCESS_TTL = '15m';
 
-  @IsOptional() @IsString() @Matches(/^[1-9]\d*(ms|s|m|h|d|w)$/)
+  @IsOptional() @IsString() @Matches(durationPattern)
   JWT_REFRESH_TTL = '7d';
 }
 

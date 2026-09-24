@@ -27,4 +27,7 @@ export class RefreshSessionEntity {
 
   @Column({ name: 'revoked_at', type: 'datetime', precision: 3, nullable: true })
   revokedAt!: Date | null;
+
+  @Column({ name: 'replaced_by', type: 'char', length: 36, nullable: true })
+  replacedBy!: string | null;
 }

@@ -1,6 +1,6 @@
-import type { Deck, VocabularyEntry } from '@/domain/types';
+import type { Deck, DeckSummary, VocabularyEntry } from '@/domain/types';
 import { apiRequest } from './httpClient';
-import type { CreateVocabularyInput, DeckRepository, ReviewResult, StudyRepository, UpdateVocabularyInput, VocabularyRepository } from '@/data/ports/repositories';
+import type { CreateVocabularyInput, DeckRepository, ReviewResult, StudyRepository, UpdateVocabularyInput, VocabularyListPage, VocabularyListPageOptions, VocabularyRepository } from '@/data/ports/repositories';
 
 const entryBody = (input: CreateVocabularyInput | UpdateVocabularyInput) => ({
   term: input.term,
@@ -12,6 +12,7 @@ const entryBody = (input: CreateVocabularyInput | UpdateVocabularyInput) => ({
 
 export class HttpDeckRepository implements DeckRepository {
   list() { return apiRequest<Deck[]>('/decks'); }
+  listSummaries() { return apiRequest<DeckSummary[]>('/decks/summary'); }
   get(id: string) { return apiRequest<Deck>(`/decks/${encodeURIComponent(id)}`); }
   create(input: { name: string; source: Deck['source'] }) { return apiRequest<Deck>('/decks', { method: 'POST', body: JSON.stringify(input) }); }
   update(id: string, input: { name: string }) { return apiRequest<Deck>(`/decks/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }); }
@@ -20,6 +21,15 @@ export class HttpDeckRepository implements DeckRepository {
 
 export class HttpVocabularyRepository implements VocabularyRepository {
   listByDeck(deckId: string) { return apiRequest<VocabularyEntry[]>(`/decks/${encodeURIComponent(deckId)}/entries`); }
+  listPage(deckId: string, options: VocabularyListPageOptions = {}) {
+    const params = new URLSearchParams();
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.offset !== undefined) params.set('offset', String(options.offset));
+    if (options.search) params.set('search', options.search);
+    if (options.status) params.set('status', options.status);
+    const query = params.toString();
+    return apiRequest<VocabularyListPage>(`/decks/${encodeURIComponent(deckId)}/entries/page${query ? `?${query}` : ''}`);
+  }
   create(input: CreateVocabularyInput) { return apiRequest<VocabularyEntry>(`/decks/${encodeURIComponent(input.deckId)}/entries`, { method: 'POST', body: JSON.stringify(entryBody(input)) }); }
   update(id: string, input: UpdateVocabularyInput) { return apiRequest<VocabularyEntry>(`/entries/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(entryBody(input)) }); }
   async delete(id: string) { await apiRequest<void>(`/entries/${encodeURIComponent(id)}`, { method: 'DELETE' }); }

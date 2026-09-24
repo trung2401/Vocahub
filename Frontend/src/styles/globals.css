@@ -192,13 +192,15 @@ a { color: inherit; text-decoration: none; }
 .study-session-heading p strong { color: var(--color-study-ink); }
 .study-mode-pill { align-items: center; background: var(--color-accent-soft); border: 1px solid rgb(15 118 110 / 16%); border-radius: 99px; color: var(--color-accent-hover); display: inline-flex; font-size: 10px; font-weight: 750; gap: 6px; padding: 7px 11px; }
 .study-card { appearance: none; background: var(--color-study-surface); border: 1px solid rgb(15 118 110 / 16%); border-radius: 20px; box-shadow: var(--shadow-study); color: var(--color-study-ink); cursor: pointer; display: block; max-width: 700px; min-height: 390px; overflow: hidden; padding: 0; position: relative; text-align: left; transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease; width: 100%; }
+.study-card:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; }
 .study-card::before { background: linear-gradient(120deg, rgb(15 118 110 / 11%), transparent 38%); content: ''; inset: 0; pointer-events: none; position: absolute; }
 .study-card:hover { border-color: rgb(15 118 110 / 38%); box-shadow: 0 28px 68px rgb(18 48 47 / 16%), 0 6px 20px rgb(18 48 47 / 10%); transform: translateY(-2px); }
 .study-card:active { transform: translateY(0); }
 .study-card-inner { display: flex; flex-direction: column; min-height: 390px; padding: 26px clamp(24px, 5vw, 52px) 24px; position: relative; }
 .study-card-topline, .study-card-footer { align-items: center; display: flex; justify-content: space-between; }
 .study-card .card-label { color: var(--color-accent); font-size: 10px; font-weight: 800; letter-spacing: 0; }
-.audio-mark { align-items: center; background: var(--color-muted); border-radius: 50%; color: var(--color-accent); display: inline-flex; height: 38px; justify-content: center; width: 38px; }
+.audio-mark { align-items: center; background: var(--color-muted); border: 0; border-radius: 50%; color: var(--color-accent); display: inline-flex; height: 38px; justify-content: center; padding: 0; width: 38px; }
+.audio-mark:hover { background: var(--color-accent-soft); color: var(--color-accent-strong); }
 .study-card-main { align-items: center; animation: study-card-enter .3s ease both; display: flex; flex: 1; flex-direction: column; justify-content: center; min-width: 0; padding: 24px 0; text-align: center; }
 .study-card-kicker { color: var(--color-study-muted); font-size: 10px; font-weight: 800; letter-spacing: 0; margin-bottom: 16px; text-transform: uppercase; }
 .study-card-term, .study-card-meaning { color: var(--color-study-ink); font-size: clamp(34px, 5vw, 56px); font-weight: 800; letter-spacing: 0; line-height: 1.08; overflow-wrap: anywhere; }
@@ -548,6 +550,8 @@ kbd { background: var(--color-surface); border: 1px solid var(--color-border); b
 .field-error { align-items: center; display: flex; gap: 5px; margin: 0; }
 .table-empty { align-items: center; border: 1px dashed var(--color-border); border-radius: 10px; color: var(--color-text-secondary); display: flex; flex-direction: column; gap: 8px; justify-content: center; min-height: 150px; text-align: center; }
 .table-empty p { font-size: 12px; margin: 0; }
+.pagination { align-items: center; display: flex; gap: 12px; justify-content: center; margin-top: 18px; }
+.pagination > span { color: var(--color-text-secondary); font-size: 12px; min-width: 88px; text-align: center; }
 .import-footer { margin-top: 22px; padding-top: 18px; }
 .import-footer .button-primary { min-width: 140px; }
 

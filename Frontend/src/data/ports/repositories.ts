@@ -1,4 +1,4 @@
-import type { Deck, VocabularyEntry } from '@/domain/types';
+import type { Deck, DeckSummary, LearningStatus, VocabularyEntry } from '@/domain/types';
 
 export interface CreateVocabularyInput {
   deckId: string;
@@ -21,6 +21,7 @@ export interface UpdateVocabularyInput {
   nextReviewAt?: string;
   correctCount?: number;
   incorrectCount?: number;
+  lastRating?: VocabularyEntry['lastRating'];
 }
 
 export interface ReviewResult {
@@ -36,14 +37,30 @@ export interface ParsedTable {
 
 export interface DeckRepository {
   list(): Promise<Deck[]>;
+  listSummaries(): Promise<DeckSummary[]>;
   get(id: string): Promise<Deck | null>;
   create(input: { name: string; source: Deck['source'] }): Promise<Deck>;
   update(id: string, input: { name: string }): Promise<Deck>;
   delete(id: string): Promise<void>;
 }
 
+export interface VocabularyListPage {
+  items: VocabularyEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface VocabularyListPageOptions {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  status?: LearningStatus;
+}
+
 export interface VocabularyRepository {
   listByDeck(deckId: string): Promise<VocabularyEntry[]>;
+  listPage(deckId: string, options?: VocabularyListPageOptions): Promise<VocabularyListPage>;
   create(input: CreateVocabularyInput): Promise<VocabularyEntry>;
   update(id: string, input: UpdateVocabularyInput): Promise<VocabularyEntry>;
   delete(id: string): Promise<void>;

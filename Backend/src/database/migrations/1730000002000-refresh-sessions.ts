@@ -12,6 +12,7 @@ export class RefreshSessions1730000002000 implements MigrationInterface {
       expires_at datetime(3) NOT NULL,
       created_at datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
       revoked_at datetime(3) NULL,
+      replaced_by char(36) NULL,
       PRIMARY KEY (id),
       UNIQUE KEY uq_refresh_sessions_token_hash (token_hash),
       KEY idx_refresh_sessions_user_revoked (user_id, revoked_at),
